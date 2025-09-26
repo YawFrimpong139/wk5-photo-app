@@ -11,7 +11,7 @@
   "containerDefinitions": [
     {
       "name": "ecs-img-stack-container",
-      "image": "<ECR_REPOSITORY_URI>:latest",
+      "image": "<IMAGE_URI>",
       "portMappings": [
         {
           "containerPort": 80,
