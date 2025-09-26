@@ -1,16 +1,12 @@
-# This workflow handles the build and deployment process of the application to AWS
-# It is triggered on pushes to the main branch and manages the CI/CD pipeline
-
 name: Build project and push to ECR to begin deployment
 
 on:
   push:
-    branches: [ main ]  # Trigger workflow only on pushes to main branch
+    branches: [ main ]
 
-# Required permissions for AWS OIDC authentication
 permissions:
-  id-token: write  # Needed for AWS OIDC authentication
-  contents: read   # Required to checkout repository
+  id-token: write
+  contents: read
 
 jobs:
   deploy:
@@ -25,57 +21,58 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: '21'
-          distribution: 'temurin'  # Eclipse Temurin distribution of OpenJDK
+          distribution: 'temurin'
 
       # Step 3: Build application using Maven
       - name: Build with Maven
-        run: mvn clean package -DskipTests  # Builds the application, skipping tests for faster deployment
+        run: mvn clean package -DskipTests
 
       # Step 4: Configure AWS credentials using OIDC provider
-      # This is a secure way to authenticate with AWS without storing long-term credentials
       - name: Configure AWS credentials using OidcProvider
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}  # IAM role with necessary permissions
-          aws-region: ${{ secrets.AWS_REGION }}              # Target AWS region
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       # Step 5: Authenticate with Amazon ECR
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # Step 6: Retrieve deployment resources from CloudFormation ,Gets S3 bucket name and CodeDeploy configuration from CloudFormation outputs
-      - name: Get Image Bucket name from CloudFormation
+      # Step 6: Retrieve deployment resources from CloudFormation
+      - name: Get deployment resources from CloudFormation
         id: get-bucket
         run: |
-        # Get S3 bucket name from CloudFormation stack outputs
+          # Get S3 bucket name
           BUCKET=$(aws cloudformation describe-stacks \
-          --stack-name ${{ secrets.CFN_STACK_NAME }} \
-          --query "Stacks[0].Outputs[?OutputKey=='ArtifactBucket'].OutputValue" \
-          --output text)
-        
+            --stack-name ${{ secrets.CFN_STACK_NAME }} \
+            --query "Stacks[0].Outputs[?OutputKey=='ArtifactBucket'].OutputValue" \
+            --output text)
+
+          # Get CodeDeploy application name
           CODEDEPLOY_APP=$(aws cloudformation describe-stacks \
-          --stack-name ${{ secrets.CFN_STACK_NAME }} \
-          --query "Stacks[0].Outputs[?OutputKey=='CodeDeployApplication'].OutputValue" \
-          --output text)
-  
+            --stack-name ${{ secrets.CFN_STACK_NAME }} \
+            --query "Stacks[0].Outputs[?OutputKey=='CodeDeployApplication'].OutputValue" \
+            --output text)
+
+          # Get CodeDeploy deployment group
           CODEDEPLOY_DG=$(aws cloudformation describe-stacks \
-          --stack-name ${{ secrets.CFN_STACK_NAME }} \
-          --query "Stacks[0].Outputs[?OutputKey=='CodeDeployDeploymentGroup'].OutputValue" \
-          --output text)
-  
+            --stack-name ${{ secrets.CFN_STACK_NAME }} \
+            --query "Stacks[0].Outputs[?OutputKey=='CodeDeployDeploymentGroup'].OutputValue" \
+            --output text)
+
+          # Export outputs
           echo "bucket=$BUCKET" >> $GITHUB_OUTPUT
           echo "codedeploy_app=$CODEDEPLOY_APP" >> $GITHUB_OUTPUT
           echo "codedeploy_dg=$CODEDEPLOY_DG" >> $GITHUB_OUTPUT
 
-
       # Step 7: Package and upload deployment artifacts
-      - name: zip appspec.yml and taskdef.json and push to s3
+      - name: Zip appspec.yml and taskdef.json and push to S3
         run: |
-        # Create deployment package
+          # Create deployment package
           zip deployment-files.zip appspec.yml taskdef.json
-          
-        # Upload to S3 bucket
+
+          # Upload to S3 bucket
           aws s3 cp deployment-files.zip s3://${{ steps.get-bucket.outputs.bucket }}/deployment-files.zip
 
       # Step 8: Build and push Docker image to ECR
@@ -83,25 +80,28 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-          IMAGE_TAG: ${{ github.sha }}  # Using git commit SHA as image tag
-        run:  |
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
           echo "ECR_REGISTRY=$ECR_REGISTRY"
           echo "ECR_REPOSITORY=$ECR_REPOSITORY"
           echo "Building image"
-        # Build Docker image with commit SHA tag
+
+          # Build Docker image with commit SHA tag
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        # Tag image as latest
+
+          # Tag image as latest
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        # Push image with commit SHA tag to ECR
+
+          # Push image with commit SHA tag
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        # Push latest tag to ECR
+
+          # Push latest tag to ECR
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          
+
       # Step 9: Trigger deployment through AWS CodeDeploy
       - name: Create CodeDeploy deployment
         run: |
           echo "Triggering deployment..."
-        # Create new deployment using the uploaded artifacts
           aws deploy create-deployment \
             --application-name ${{ steps.get-bucket.outputs.codedeploy_app }} \
             --deployment-group-name ${{ steps.get-bucket.outputs.codedeploy_dg }} \
