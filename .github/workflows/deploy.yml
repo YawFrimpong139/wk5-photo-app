@@ -39,7 +39,7 @@ jobs:
         run: |
           BUCKET=$(aws cloudformation describe-stacks \
             --stack-name ${{ secrets.CFN_STACK_NAME }} \
-            --query "Stacks[0].Outputs[?OutputKey=='ImageBucket'].OutputValue" \
+            --query "Stacks[0].Outputs[?OutputKey=='ArtifactBucket'].OutputValue" \
             --output text)
           echo "bucket=$BUCKET" >> $GITHUB_OUTPUT
 
