@@ -34,12 +34,23 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Get Image Bucket name from CloudFormation
+        id: get-bucket
+        run: |
+          BUCKET=$(aws cloudformation describe-stacks \
+            --stack-name ${{ secrets.CFN_STACK_NAME }} \
+            --query "Stacks[0].Outputs[?OutputKey=='ImageBucket'].OutputValue" \
+            --output text)
+          echo "bucket=$BUCKET" >> $GITHUB_OUTPUT
+
+
       - name: zip appspec.yml and taskdef.json and push to s3
         run: |
-          echo "Using bucket: ${{ secrets.S3_BUCKET_NAME }}"
           zip deployment-files.zip appspec.yml taskdef.json
           
-          aws s3 cp deployment-files.zip s3://${{ secrets.S3_BUCKET_NAME }}/deployment-files.zip
+          aws s3 cp deployment-files.zip s3://${{ steps.get-bucket.outputs.bucket }}/deployment-files.zip
+          
+#          aws s3 cp deployment-files.zip s3://${{ secrets.S3_BUCKET_NAME }}/deployment-files.zip
 
       - name: Build, tag, and push image to Amazon ECR
         env:
