@@ -51,27 +51,24 @@ jobs:
         run: |
         # Get S3 bucket name from CloudFormation stack outputs
           BUCKET=$(aws cloudformation describe-stacks \
-            --stack-name ${{ secrets.CFN_STACK_NAME }} \
-            --query "Stacks[0].Outputs[?OutputKey=='ArtifactBucket'].OutputValue" \
-            --output text)
-          echo "bucket=$BUCKET" >> $GITHUB_OUTPUT
-          
-          # Get CodeDeploy application name
+          --stack-name ${{ secrets.CFN_STACK_NAME }} \
+          --query "Stacks[0].Outputs[?OutputKey=='ArtifactBucket'].OutputValue" \
+          --output text)
+        
           CODEDEPLOY_APP=$(aws cloudformation describe-stacks \
-            --stack-name $STACK_NAME \
-            --query "Stacks[0].Outputs[?OutputKey=='CodeDeployApplication'].OutputValue" \
-            --output text)
-
-          # Get CodeDeploy deployment group
+          --stack-name ${{ secrets.CFN_STACK_NAME }} \
+          --query "Stacks[0].Outputs[?OutputKey=='CodeDeployApplication'].OutputValue" \
+          --output text)
+  
           CODEDEPLOY_DG=$(aws cloudformation describe-stacks \
-            --stack-name $STACK_NAME \
-            --query "Stacks[0].Outputs[?OutputKey=='CodeDeploymentGroup'].OutputValue" \
-            --output text)
-
-          # Export values for use in subsequent steps
+          --stack-name ${{ secrets.CFN_STACK_NAME }} \
+          --query "Stacks[0].Outputs[?OutputKey=='CodeDeployDeploymentGroup'].OutputValue" \
+          --output text)
+  
           echo "bucket=$BUCKET" >> $GITHUB_OUTPUT
           echo "codedeploy_app=$CODEDEPLOY_APP" >> $GITHUB_OUTPUT
           echo "codedeploy_dg=$CODEDEPLOY_DG" >> $GITHUB_OUTPUT
+
 
       # Step 7: Package and upload deployment artifacts
       - name: zip appspec.yml and taskdef.json and push to s3
@@ -96,6 +93,8 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         # Tag image as latest
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        # Push image with commit SHA tag to ECR
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         # Push latest tag to ECR
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
           
@@ -105,6 +104,6 @@ jobs:
           echo "Triggering deployment..."
         # Create new deployment using the uploaded artifacts
           aws deploy create-deployment \
-            --application-name ${{ steps.cf-outputs.outputs.codedeploy_app }} \
-            --deployment-group-name ${{ steps.cf-outputs.outputs.codedeploy_dg }} \
-            --s3-location bucket=${{ steps.cf-outputs.outputs.bucket }},key=deployment-files.zip,bundleType=zip
+            --application-name ${{ steps.get-bucket.outputs.codedeploy_app }} \
+            --deployment-group-name ${{ steps.get-bucket.outputs.codedeploy_dg }} \
+            --s3-location bucket=${{ steps.get-bucket.outputs.bucket }},key=deployment-files.zip,bundleType=zip
