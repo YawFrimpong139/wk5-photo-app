@@ -36,6 +36,7 @@ jobs:
 
       - name: zip appspec.yml and taskdef.json and push to s3
         run: |
+          echo "Using bucket: ${{ secrets.S3_BUCKET_NAME }}"
           zip deployment-files.zip appspec.yml taskdef.json
           
           aws s3 cp deployment-files.zip s3://${{ secrets.S3_BUCKET_NAME }}/deployment-files.zip
