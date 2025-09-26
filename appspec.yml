@@ -5,5 +5,5 @@ Resources:
       Properties:
         TaskDefinition: arn:aws:ecs:eu-central-1:448049788660:task-definition/ecs-img-stack-task-definition:3
         LoadBalancerInfo:
-          ContainerName: week5-ecs-stack-container
+          ContainerName: ecs-img-stack-container
           ContainerPort: 80
