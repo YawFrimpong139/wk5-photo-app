@@ -44,8 +44,7 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # Step 6: Retrieve deployment resources from CloudFormation
-      # Gets S3 bucket name and CodeDeploy configuration from CloudFormation outputs
+      # Step 6: Retrieve deployment resources from CloudFormation ,Gets S3 bucket name and CodeDeploy configuration from CloudFormation outputs
       - name: Get Image Bucket name from CloudFormation
         id: get-bucket
         run: |
