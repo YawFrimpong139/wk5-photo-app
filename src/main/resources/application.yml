@@ -15,7 +15,7 @@ spring:
       content-type: text/html
     cache: false
   datasource:
-    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/gallerydb
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/photodb
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
