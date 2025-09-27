@@ -15,9 +15,9 @@ spring:
       content-type: text/html
     cache: false
   datasource:
-    url: jdbc:postgresql://localhost:5433/gallerydb
-    username: postgres
-    password: zealow139
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/gallerydb
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -35,3 +35,8 @@ management:
     web:
       exposure:
         include: health
+
+aws:
+  s3:
+    bucket: ${AWS_S3_BUCKET}
+    region: eu-central-1
