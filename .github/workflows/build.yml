@@ -1,0 +1,86 @@
+name: Build & Push to ECR (OIDC)
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'eu-central-1' }}
+  ECR_REPO: ${{ vars.ECR_REPO || 'java-web-app' }}
+  ARTIFACT_BUCKET: ${{ vars.S3_BUCKET || 'artif-bkt-12345' }}
+  TASK_DEFINITION_FAMILY: ${{ vars.TASK_DEFINITION_FAMILY || 'java-web-app' }}
+  CONTAINER_NAME: ${{ vars.CONTAINER_NAME || 'java-web-app' }}
+  PHOTO_BUCKET: ${{ vars.PHOTO_BUCKET || 'photo-bkt-12345678' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ vars.GH_OIDC_ECR_PUSH_ROLE_ARN }}
+          role-session-name: gha-ecr-push
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        run: |
+          IMAGE_URI="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPO }}"
+          docker build -t "$IMAGE_URI:latest" .
+          docker push "$IMAGE_URI:latest"
+          echo "image-uri=$IMAGE_URI:latest" >> $GITHUB_OUTPUT
+
+      - name: Process deployment templates
+        env:
+          IMAGE_URI_OUTPUT: ${{ steps.build-image.outputs.image-uri }}
+          EXECUTION_ROLE_ARN: ${{ vars.EXECUTION_ROLE_ARN }}
+          TASK_ROLE_ARN: ${{ vars.TASK_ROLE_ARN }}
+          DB_SECRET_ARN: ${{ vars.DB_SECRET_ARN }}
+          DB_HOST: ${{ vars.DB_HOST }}
+
+        run: |
+          # Create deployment directory
+          mkdir -p deployment
+          
+          # Process appspec.yml template
+          sed \
+            -e "s|<CONTAINER_NAME>|${{ env.CONTAINER_NAME }}|g" \
+            .github/templates/appspec.yml.template > deployment/appspec.yml
+          
+          # Process taskdef.json template
+          sed \
+            -e "s|<TASK_DEFINITION_FAMILY>|${{ env.TASK_DEFINITION_FAMILY }}|g" \
+            -e "s|<EXECUTION_ROLE_ARN>|$EXECUTION_ROLE_ARN|g" \
+            -e "s|<TASK_ROLE_ARN>|$TASK_ROLE_ARN|g" \
+            -e "s|<CONTAINER_NAME>|${{ env.CONTAINER_NAME }}|g" \
+            -e "s|<IMAGE_URI>|$IMAGE_URI_OUTPUT|g" \
+            -e "s|<AWS_REGION>|${{ env.AWS_REGION }}|g" \
+            -e "s|<DB_HOST>|$DB_HOST|g" \
+            -e "s|<DB_SECRET_ARN>|$DB_SECRET_ARN|g" \
+            -e "s|<PHOTO_BUCKET>|${{ env.PHOTO_BUCKET }}|g" \
+            .github/templates/taskdef.json.template > deployment/taskdef.json
+          
+          # Process imageDetail.json template
+          sed \
+            -e "s|<IMAGE_URI>|$IMAGE_URI_OUTPUT|g" \
+            .github/templates/imageDetail.json.template > deployment/imageDetail.json
+
+      - name: Create and upload deployment zip to S3
+        run: |
+          cd deployment
+          zip ../deployment-files.zip appspec.yml taskdef.json imageDetail.json
+          cd ..
+          aws s3 cp deployment-files.zip s3://${{ env.ARTIFACT_BUCKET }}/deployment-files.zip --region ${{ env.AWS_REGION }}
+          echo "Deployment package uploaded to S3"

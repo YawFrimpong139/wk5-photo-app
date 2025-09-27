@@ -3,7 +3,7 @@ Resources:
   - TargetService:
       Type: AWS::ECS::Service
       Properties:
-        TaskDefinition: taskdef.json
+        TaskDefinition: <TASK_DEFINITION>
         LoadBalancerInfo:
-          ContainerName: ecs-img-stack-container
-          ContainerPort: 80
+          ContainerName: "<CONTAINER_NAME>"
+          ContainerPort: 8080
