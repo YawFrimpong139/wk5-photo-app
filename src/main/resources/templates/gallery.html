@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artistic Gallery</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --primary-dark: #4f46e5;
+            --accent: #f59e0b;
+            --accent-light: #fbbf24;
+            --surface: #ffffff;
+            --background: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        .font-display {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .floating {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .masonry-grid {
+            column-count: 1;
+            column-gap: 1.5rem;
+        }
+
+        @media (min-width: 640px) {
+            .masonry-grid {
+                column-count: 2;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .masonry-grid {
+                column-count: 3;
+            }
+        }
+
+        @media (min-width: 1280px) {
+            .masonry-grid {
+                column-count: 4;
+            }
+        }
+
+        .masonry-item {
+            break-inside: avoid;
+            margin-bottom: 1.5rem;
+        }
+
+        .upload-area {
+            transition: all 0.3s ease;
+            border: 2px dashed #cbd5e1;
+        }
+
+        .upload-area:hover, .upload-area.dragover {
+            border-color: var(--primary);
+            background-color: rgba(99, 102, 241, 0.05);
+        }
+
+        .modal-enter {
+            animation: modalEnter 0.3s ease-out;
+        }
+
+        @keyframes modalEnter {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .slide-up {
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.9);
+            transform: translateY(-2px);
+        }
+
+        .image-container {
+            position: relative;
+            overflow: hidden;
+            border-radius: 12px;
+        }
+
+        .image-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+            padding: 1.5rem;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .image-container:hover .image-overlay {
+            transform: translateY(0);
+        }
+
+        .floating-shape {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.1;
+            z-index: 0;
+        }
+
+        .shape-1 {
+            width: 300px;
+            height: 300px;
+            top: 10%;
+            left: 5%;
+            background: var(--primary);
+            animation: float 8s ease-in-out infinite;
+        }
+
+        .shape-2 {
+            width: 200px;
+            height: 200px;
+            bottom: 15%;
+            right: 8%;
+            background: var(--accent);
+            animation: float 10s ease-in-out infinite reverse;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50">
+<!-- Background Shapes -->
+<div class="fixed inset-0 pointer-events-none overflow-hidden">
+    <div class="shape-1 floating-shape"></div>
+    <div class="shape-2 floating-shape"></div>
+</div>
+
+<!-- Navigation -->
+<nav class="navbar sticky top-0 z-40">
+    <div class="container mx-auto px-4 py-4">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center">
+                    <i class="fas fa-camera text-white text-sm"></i>
+                </div>
+                <span class="font-display text-xl font-bold gradient-text">Artistic Gallery</span>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                <button class="btn-secondary py-2 px-4 rounded-lg flex items-center space-x-2">
+                    <i class="fas fa-search"></i>
+                    <span>Search</span>
+                </button>
+                <button onclick="openUploadModal()" class="btn-primary py-2 px-6 rounded-lg flex items-center space-x-2">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <span>Upload</span>
+                </button>
+                <div class="w-10 h-10 rounded-full bg-gradient-to-r from-indigo-400 to-purple-400 flex items-center justify-center text-white font-semibold">
+                    U
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<div class="relative z-10 container mx-auto px-4 py-8 max-w-7xl">
+    <!-- Hero Section -->
+    <section class="text-center mb-16 mt-8 fade-in">
+        <h1 class="text-5xl md:text-6xl font-display font-bold mb-6">
+            <span class="gradient-text">Your Creative Space</span>
+        </h1>
+        <p class="text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
+            Showcase your visual stories in a beautifully designed gallery that highlights your artistic vision.
+        </p>
+
+        <div class="mt-10 flex justify-center space-x-4">
+            <button onclick="openUploadModal()" class="btn-primary py-3 px-8 rounded-lg flex items-center space-x-2 text-lg">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <span>Upload Photos</span>
+            </button>
+            <button class="btn-secondary py-3 px-8 rounded-lg flex items-center space-x-2 text-lg">
+                <i class="fas fa-play-circle"></i>
+                <span>View Demo</span>
+            </button>
+        </div>
+    </section>
+
+    <!-- Gallery Section -->
+    <section class="mb-16 slide-up">
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h2 class="text-3xl font-display font-bold text-slate-800">Your Gallery</h2>
+                <p class="text-slate-600 mt-2">
+                    <span th:text="${imageCount}">0</span> photos ·
+                    <span th:text="${lastUpdate}">Last updated today</span>
+                </p>
+            </div>
+
+            <div class="flex space-x-2">
+                <button class="btn-secondary py-2 px-4 rounded-lg flex items-center space-x-2">
+                    <i class="fas fa-filter"></i>
+                    <span>Filter</span>
+                </button>
+                <button class="btn-secondary py-2 px-4 rounded-lg flex items-center space-x-2">
+                    <i class="fas fa-sort"></i>
+                    <span>Sort</span>
+                </button>
+            </div>
+        </div>
+            <!-- Gallery Grid -->
+            <div class="masonry-grid">
+                <!-- Dynamic Images -->
+                <div th:each="image : ${images}" class="masonry-item">
+                    <div class="card-hover bg-white rounded-xl overflow-hidden shadow-md">
+                        <div class="image-container">
+                            <img th:src="${image.presignedUrl}"
+                                 th:alt="${image.description}"
+                                 class="w-full h-auto object-cover image-preview"
+                                 th:data-src="${image.presignedUrl}"
+                                 th:data-description="${image.description}"
+                                 th:data-id="${image.id}"
+                                 th:data-created-at="${image.createdAt}
+">
+                            <div class="image-overlay text-white">
+                                <p class="font-semibold" th:text="${image.description}">Photo Description</p>
+                                <p class="text-sm opacity-90">Added to Gallery</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- End Gallery Grid -->
+    </section>
+</div>
+
+<!-- Upload Modal -->
+<div id="uploadModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4" onclick="closeUploadModal()">
+    <div class="relative max-w-2xl w-full modal-enter" onclick="event.stopPropagation()">
+        <div class="glass-effect rounded-2xl p-8 shadow-xl border">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-display font-semibold text-slate-800 flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center">
+                        <i class="fas fa-cloud-upload-alt text-white"></i>
+                    </div>
+                    <span>Upload New Photo</span>
+                </h2>
+                <button onclick="closeUploadModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <form class="space-y-6" id="uploadForm" enctype="multipart/form-data" method="post" action="/upload">
+            <!-- File Upload Area -->
+                <div class="upload-area rounded-xl p-8 text-center cursor-pointer" onclick="document.getElementById('fileInput').click()">
+                    <div class="space-y-4">
+                        <div class="w-20 h-20 mx-auto bg-indigo-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-cloud-upload-alt text-3xl text-indigo-500"></i>
+                        </div>
+                        <div>
+                            <p class="text-lg font-medium text-slate-700">Drop your image here, or click to browse</p>
+                            <p class="text-sm text-slate-500">Supports JPG, PNG, GIF up to 10MB</p>
+                        </div>
+                    </div>
+                    <input id="fileInput" name="file" type="file" accept="image/*" class="hidden" onchange="updateFileName(this)">
+                </div>
+
+                <div id="fileName" class="hidden text-sm text-indigo-600 text-center font-medium bg-indigo-50 py-2 rounded-lg"></div>
+
+                <!-- Description Input -->
+                <div class="space-y-2">
+                    <label for="description" class="block text-sm font-medium text-slate-700">Photo Description</label>
+                    <textarea
+                            id="description"
+                            name="description"
+                            rows="3"
+                            placeholder="Add a description for your photo..."
+                            class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 resize-none"
+                    ></textarea>
+                </div>
+
+                <!-- Modal Actions -->
+                <div class="flex space-x-3 pt-4">
+                    <button
+                            type="button"
+                            onclick="closeUploadModal()"
+                            class="flex-1 btn-secondary py-3 px-6 rounded-xl"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                            type="submit"
+                            class="flex-1 btn-primary py-3 px-6 rounded-xl"
+                    >
+                        Upload Photo
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Image Modal -->
+<div id="imageModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden items-center justify-center p-4" onclick="closeImageModal()">
+    <div class="relative max-w-6xl max-h-full" onclick="event.stopPropagation()">
+        <button onclick="closeImageModal()" class="absolute -top-12 right-0 text-white hover:text-slate-300 transition-colors">
+            <i class="fas fa-times text-2xl"></i>
+        </button>
+        <div class="glass-effect rounded-xl overflow-hidden">
+            <img id="modalImage" src="" alt="" class="max-w-full max-h-[70vh] object-contain">
+            <div class="p-6">
+                <p id="modalDescription" class="text-slate-700 text-lg"></p>
+                <div class="flex justify-between items-center mt-4">
+                    <div class="flex space-x-2">
+                        <button class="btn-secondary py-2 px-4 rounded-lg flex items-center space-x-2">
+                            <i class="fas fa-heart"></i>
+                            <span>Like</span>
+                        </button>
+                        <button class="btn-secondary py-2 px-4 rounded-lg flex items-center space-x-2">
+                            <i class="fas fa-share"></i>
+                            <span>Share</span>
+                        </button>
+                        <button id="deleteButton" onclick="deleteImage()" class="btn-secondary bg-red-100 hover:bg-red-200 text-red-600 py-2 px-4 rounded-lg flex items-center space-x-2">
+                            <i class="fas fa-trash"></i>
+                            <span>Delete</span>
+                        </button>
+                    </div>
+                    <div class="text-slate-500 text-sm">
+                        <i class="fas fa-calendar-alt mr-1"></i>
+                        <span id="modalDate"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Upload modal functionality
+    function openUploadModal() {
+        const modal = document.getElementById('uploadModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeUploadModal() {
+        const modal = document.getElementById('uploadModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = 'auto';
+
+        // Reset form
+        const form = modal.querySelector('form');
+        form.reset();
+        document.getElementById('fileName').classList.add('hidden');
+    }
+
+    // File upload functionality
+    function updateFileName(input) {
+        const fileName = document.getElementById('fileName');
+        if (input.files.length > 0) {
+            fileName.textContent = `Selected: ${input.files[0].name}`;
+            fileName.classList.remove('hidden');
+        } else {
+            fileName.classList.add('hidden');
+        }
+    }
+
+    // Drag and drop functionality
+    const uploadArea = document.querySelector('.upload-area');
+    const fileInput = document.getElementById('fileInput');
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        uploadArea.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        uploadArea.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        uploadArea.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight(e) {
+        uploadArea.classList.add('dragover');
+    }
+
+    function unhighlight(e) {
+        uploadArea.classList.remove('dragover');
+    }
+
+    uploadArea.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        fileInput.files = files;
+        updateFileName(fileInput);
+    }
+
+    let currentImageId = null;
+
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffTime = Math.abs(now - date);
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 0) {
+            return 'Today';
+        } else if (diffDays === 1) {
+            return 'Yesterday';
+        } else if (diffDays < 7) {
+            return `${diffDays} days ago`;
+        } else {
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+    }
+
+    function openImageModal(src, description, id, createdAt) {
+        const modal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        const modalDescription = document.getElementById('modalDescription');
+        const modalDate = document.getElementById('modalDate');
+
+        currentImageId = id;
+        modalImage.src = src;
+        modalDescription.textContent = description;
+        modalDate.textContent = formatDate(createdAt);
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function deleteImage() {
+        if (!currentImageId) return;
+
+        if (confirm('Are you sure you want to delete this image?')) {
+            fetch(`/delete/${currentImageId}`, {
+                method: 'POST',
+            })
+                .then(response => {
+                    if (response.ok) {
+                        window.location.reload();
+                    } else {
+                        alert('Failed to delete image');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to delete image');
+                });
+        }
+    }
+
+    function closeImageModal() {
+        const modal = document.getElementById('imageModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = 'auto';
+    }
+
+    document.getElementById('uploadForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+
+        fetch('/upload', {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => {
+                if (response.ok) {
+                    window.location.reload(); // Reload the page to show the new image
+                    closeUploadModal();
+                } else {
+                    console.error('Upload failed');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    });
+
+    // Add this to your existing script section
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.image-preview').forEach(image => {
+            image.addEventListener('click', function() {
+                const src = this.getAttribute('data-src');
+                const description = this.getAttribute('data-description');
+                const id = this.getAttribute('data-id');
+                const createdAt = this.getAttribute('data-created-at');
+                openImageModal(src, description, id, createdAt);
+            });
+        });
+    });
+
+    // Keyboard navigation for modals
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeImageModal();
+            closeUploadModal();
+        }
+    });
+</script>
+</body>
+</html>
